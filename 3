@@ -1,0 +1,77 @@
+# =====================================================
+# Early Stopping + Fit Detection
+# =====================================================
+class EarlyStopping:
+    def __init__(self, patience=10):
+        self.patience = patience
+        self.best_loss = np.inf
+        self.counter = 0
+
+    def __call__(self, val_loss):
+        if val_loss < self.best_loss:
+            self.best_loss = val_loss
+            self.counter = 0
+        else:
+            self.counter += 1
+        return self.counter >= self.patience
+
+
+def detect_overfitting(train_losses, val_losses):
+    if len(train_losses) < 10:
+        return "Unknown"
+    final_gap = val_losses[-1] - train_losses[-1]
+    if final_gap > 0.1:
+        return "Overfitting"
+    elif train_losses[-1] > 0.6:
+        return "Underfitting"
+    else:
+        return "Good Fit"
+
+
+# =====================================================
+# Training
+# =====================================================
+def train_model(X_train, y_train, X_val, y_val, dropout_rate=0.0,
+                use_early_stopping=False, optimizer_type="AdaGrad"):
+
+    model = NeuralNetwork(X_train.shape[1], 10, 1, dropout_rate)
+
+    # Pick optimizer
+    if optimizer_type == "SGD":
+        optimizer = SGDOptimizer(learning_rate=0.1)
+    elif optimizer_type == "Momentum":
+        optimizer = MomentumOptimizer(learning_rate=0.1)
+    elif optimizer_type == "AdaGrad":
+        optimizer = AdaGradOptimizer(learning_rate=0.1)
+    elif optimizer_type == "Adam":
+        optimizer = AdamOptimizer(learning_rate=0.01)
+    else:
+        raise ValueError("Unknown optimizer")
+
+    early_stopping = EarlyStopping(patience=20) if use_early_stopping else None
+
+    train_losses, val_losses, train_accuracies, val_accuracies = [], [], [], []
+
+    for epoch in range(300):
+        model.set_training(True)
+        y_pred = model.forward(X_train)
+        train_loss = model.compute_loss(y_train, y_pred)
+        dW1, db1, dW2, db2 = model.backward(X_train, y_train, y_pred)
+        optimizer.update(model, dW1, db1, dW2, db2)
+
+        model.set_training(False)
+        y_pred_val = model.forward(X_val)
+        val_loss = model.compute_loss(y_val, y_pred_val)
+
+        train_acc = np.mean((y_pred > 0.5).astype(int) == y_train)
+        val_acc = np.mean((y_pred_val > 0.5).astype(int) == y_val)
+
+        train_losses.append(train_loss)
+        val_losses.append(val_loss)
+        train_accuracies.append(train_acc)
+        val_accuracies.append(val_acc)
+
+        if early_stopping and early_stopping(val_loss):
+            break
+
+    return model, train_losses, val_losses, train_accuracies, val_accuracies
