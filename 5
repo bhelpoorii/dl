@@ -1,0 +1,112 @@
+# =====================================================
+# Plotting
+# =====================================================
+def plot_results(results):
+    # Group results by optimizer
+    optimizers = ["SGD", "Momentum", "AdaGrad", "Adam"]
+    configs = ["Basic", "With Dropout", "With Early Stopping", "Both Regularizations"]
+
+    for opt in optimizers:
+        fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+        fig.suptitle(f"Results for Optimizer: {opt}", fontsize=14, fontweight="bold")
+
+        # Plot train/val loss curves
+        for cfg in configs:
+            name = f"{cfg} + {opt}"
+            if name in results and len(results[name]['train_losses']) > 0:
+                epochs = range(len(results[name]['train_losses']))
+                axes[0].plot(epochs, results[name]['train_losses'], '--', alpha=0.6, label=f"{cfg} (Train)")
+                axes[0].plot(epochs, results[name]['val_losses'], '-', alpha=0.8, label=f"{cfg} (Val)")
+
+        axes[0].set_title('Training vs Validation Loss')
+        axes[0].set_xlabel('Epoch')
+        axes[0].set_ylabel('Loss')
+        axes[0].legend(fontsize=8)
+        axes[0].grid(True)
+
+        # Plot test accuracy bars
+        acc_names = [f"{cfg} + {opt}" for cfg in configs if f"{cfg} + {opt}" in results]
+        test_accs = [results[name]['test_accuracy'] for name in acc_names]
+        colors = ['red' if results[name]['fit_status'] == 'Overfitting'
+                  else 'orange' if results[name]['fit_status'] == 'Underfitting'
+                  else 'green' for name in acc_names]
+
+        bars = axes[1].bar(range(len(acc_names)), test_accs, color=colors, alpha=0.7)
+        axes[1].set_title('Test Accuracy by Config')
+        axes[1].set_ylabel('Test Accuracy')
+        axes[1].set_xticks(range(len(acc_names)))
+        axes[1].set_xticklabels(acc_names, rotation=30, ha="right", fontsize=8)
+        axes[1].grid(True, axis='y')
+
+        for bar, acc in zip(bars, test_accs):
+            axes[1].text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.01,
+                         f'{acc:.3f}', ha='center', va='bottom', fontsize=8)
+
+        plt.tight_layout(rect=[0, 0, 1, 0.95])
+        plt.show()
+
+    # Gradient Boosting separately
+    if "Gradient Boosting" in results:
+        plt.figure(figsize=(6, 4))
+        acc = results["Gradient Boosting"]['test_accuracy']
+        plt.bar(["Gradient Boosting"], [acc], color="blue", alpha=0.7)
+        plt.ylabel("Test Accuracy")
+        plt.title("Gradient Boosting Baseline")
+        plt.text(0, acc + 0.01, f"{acc:.3f}", ha="center", va="bottom", fontsize=8)
+        plt.ylim(0, 1)
+        plt.grid(True, axis="y")
+        plt.show()
+
+
+# =====================================================
+# Extra Visualizations
+# =====================================================
+def extra_visualizations(results):
+    configs = ["Basic", "With Dropout", "With Early Stopping", "Both Regularizations"]
+    optimizers = ["SGD", "Momentum", "AdaGrad", "Adam"]
+
+    # 1. Accuracy curves per optimizer
+    for opt in optimizers:
+        plt.figure(figsize=(8,5))
+        for cfg in configs:
+            name = f"{cfg} + {opt}"
+            if name in results and len(results[name]['val_accuracies']) > 0:
+                plt.plot(results[name]['val_accuracies'], label=f"{cfg} (Val)")
+                plt.plot(results[name]['train_accuracies'], '--', alpha=0.6, label=f"{cfg} (Train)")
+        plt.title(f"Accuracy Curves ({opt})")
+        plt.xlabel("Epoch")
+        plt.ylabel("Accuracy")
+        plt.legend(fontsize=8)
+        plt.grid(True)
+        plt.show()
+
+    # 2. Heatmap of Test Accuracies
+    heatmap_data = []
+    for cfg in configs:
+        row = []
+        for opt in optimizers:
+            name = f"{cfg} + {opt}"
+            row.append(results[name]['test_accuracy'] if name in results else np.nan)
+        heatmap_data.append(row)
+
+    plt.figure(figsize=(8,5))
+    sns.heatmap(heatmap_data, annot=True, cmap="YlGnBu", xticklabels=optimizers, yticklabels=configs, fmt=".3f")
+    plt.title("Test Accuracy Heatmap")
+    plt.show()
+
+    # 3. Overfitting Gap plot
+    plt.figure(figsize=(8,5))
+    gaps = []
+    labels = []
+    for cfg in configs:
+        for opt in optimizers:
+            name = f"{cfg} + {opt}"
+            if name in results and results[name]['train_losses']:
+                gap = results[name]['val_losses'][-1] - results[name]['train_losses'][-1]
+                gaps.append(gap)
+                labels.append(name)
+    sns.barplot(x=gaps, y=labels, orient="h", palette="coolwarm")
+    plt.title("Overfitting Gap (Val Loss - Train Loss)")
+    plt.xlabel("Gap")
+    plt.ylabel("Model")
+    plt.show()
