@@ -1,0 +1,97 @@
+# Optimizers
+# =====================================================
+class SGDOptimizer:
+    def __init__(self, learning_rate=0.01):
+        self.learning_rate = learning_rate
+        self.name = "SGD"
+
+    def update(self, model, dW1, db1, dW2, db2):
+        model.W1 -= self.learning_rate * dW1
+        model.b1 -= self.learning_rate * db1
+        model.W2 -= self.learning_rate * dW2
+        model.b2 -= self.learning_rate * db2
+
+
+class MomentumOptimizer:
+    def __init__(self, learning_rate=0.01, momentum=0.9):
+        self.learning_rate = learning_rate
+        self.momentum = momentum
+        self.name = "Momentum"
+
+        self.vW1 = 0; self.vb1 = 0
+        self.vW2 = 0; self.vb2 = 0
+
+    def update(self, model, dW1, db1, dW2, db2):
+        self.vW1 = self.momentum * self.vW1 + self.learning_rate * dW1
+        self.vb1 = self.momentum * self.vb1 + self.learning_rate * db1
+        self.vW2 = self.momentum * self.vW2 + self.learning_rate * dW2
+        self.vb2 = self.momentum * self.vb2 + self.learning_rate * db2
+
+        model.W1 -= self.vW1
+        model.b1 -= self.vb1
+        model.W2 -= self.vW2
+        model.b2 -= self.vb2
+
+
+class AdaGradOptimizer:
+    def __init__(self, learning_rate=0.01, epsilon=1e-8):
+        self.learning_rate = learning_rate
+        self.epsilon = epsilon
+        self.name = "AdaGrad"
+
+        self.GW1 = 0; self.Gb1 = 0
+        self.GW2 = 0; self.Gb2 = 0
+
+    def update(self, model, dW1, db1, dW2, db2):
+        self.GW1 += dW1 ** 2
+        self.Gb1 += db1 ** 2
+        self.GW2 += dW2 ** 2
+        self.Gb2 += db2 ** 2
+
+        model.W1 -= (self.learning_rate / (np.sqrt(self.GW1) + self.epsilon)) * dW1
+        model.b1 -= (self.learning_rate / (np.sqrt(self.Gb1) + self.epsilon)) * db1
+        model.W2 -= (self.learning_rate / (np.sqrt(self.GW2) + self.epsilon)) * dW2
+        model.b2 -= (self.learning_rate / (np.sqrt(self.Gb2) + self.epsilon)) * db2
+
+
+class AdamOptimizer:
+    def __init__(self, learning_rate=0.01, beta1=0.9, beta2=0.999, epsilon=1e-8):
+        self.learning_rate = learning_rate
+        self.beta1 = beta1
+        self.beta2 = beta2
+        self.epsilon = epsilon
+        self.t = 0
+        self.name = "Adam"
+
+        self.mW1 = 0; self.vW1 = 0
+        self.mb1 = 0; self.vb1 = 0
+        self.mW2 = 0; self.vW2 = 0
+        self.mb2 = 0; self.vb2 = 0
+
+    def update(self, model, dW1, db1, dW2, db2):
+        self.t += 1
+
+        self.mW1 = self.beta1 * self.mW1 + (1 - self.beta1) * dW1
+        self.mb1 = self.beta1 * self.mb1 + (1 - self.beta1) * db1
+        self.mW2 = self.beta1 * self.mW2 + (1 - self.beta1) * dW2
+        self.mb2 = self.beta1 * self.mb2 + (1 - self.beta1) * db2
+
+        self.vW1 = self.beta2 * self.vW1 + (1 - self.beta2) * (dW1 ** 2)
+        self.vb1 = self.beta2 * self.vb1 + (1 - self.beta2) * (db1 ** 2)
+        self.vW2 = self.beta2 * self.vW2 + (1 - self.beta2) * (dW2 ** 2)
+        self.vb2 = self.beta2 * self.vb2 + (1 - self.beta2) * (db2 ** 2)
+
+        mW1_corr = self.mW1 / (1 - self.beta1 ** self.t)
+        mb1_corr = self.mb1 / (1 - self.beta1 ** self.t)
+        mW2_corr = self.mW2 / (1 - self.beta1 ** self.t)
+        mb2_corr = self.mb2 / (1 - self.beta1 ** self.t)
+
+        vW1_corr = self.vW1 / (1 - self.beta2 ** self.t)
+        vb1_corr = self.vb1 / (1 - self.beta2 ** self.t)
+        vW2_corr = self.vW2 / (1 - self.beta2 ** self.t)
+        vb2_corr = self.vb2 / (1 - self.beta2 ** self.t)
+
+        model.W1 -= self.learning_rate * mW1_corr / (np.sqrt(vW1_corr) + self.epsilon)
+        model.b1 -= self.learning_rate * mb1_corr / (np.sqrt(vb1_corr) + self.epsilon)
+        model.W2 -= self.learning_rate * mW2_corr / (np.sqrt(vW2_corr) + self.epsilon)
+        model.b2 -= self.learning_rate * mb2_corr / (np.sqrt(vb2_corr) + self.epsilon)
