@@ -1,0 +1,19 @@
+# =====================================================
+# Run Experiment
+# =====================================================
+if __name__ == "__main__":
+    # Load dataset
+    data = load_breast_cancer()
+    X = data.data
+    y = data.target.reshape(-1, 1)
+
+    # Standardize
+    scaler = StandardScaler()
+    X = scaler.fit_transform(X)
+
+    # Run comparison
+    results = compare_models(X, y)
+
+    # Plot results
+    plot_results(results)
+    extra_visualizations(results)
