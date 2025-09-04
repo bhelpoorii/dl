@@ -1,0 +1,64 @@
+# =====================================================
+# Comparison
+# =====================================================
+def compare_models(X, y):
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_val, y_train, y_val = train_test_split(X_temp, y_temp, test_size=0.25, random_state=42)
+
+    configs = [
+        {'name': 'Basic', 'dropout': 0.0, 'early_stop': False},
+        {'name': 'With Dropout', 'dropout': 0.3, 'early_stop': False},
+        {'name': 'With Early Stopping', 'dropout': 0.0, 'early_stop': True},
+        {'name': 'Both Regularizations', 'dropout': 0.3, 'early_stop': True},
+    ]
+    optimizers = ["SGD", "Momentum", "AdaGrad", "Adam"]
+
+    results = {}
+
+    # Train NN with all optimizers + configs
+    for config in configs:
+        for opt in optimizers:
+            name = f"{config['name']} + {opt}"
+            print(f"\nTraining {name}...")
+
+            model, train_losses, val_losses, train_accs, val_accs = train_model(
+                X_train, y_train, X_val, y_val,
+                dropout_rate=config['dropout'],
+                use_early_stopping=config['early_stop'],
+                optimizer_type=opt
+            )
+
+            model.set_training(False)
+            y_pred_test = model.forward(X_test)
+            test_accuracy = np.mean((y_pred_test > 0.5).astype(int) == y_test)
+
+            fit_status = detect_overfitting(train_losses, val_losses)
+
+            results[name] = {
+                'train_losses': train_losses,
+                'val_losses': val_losses,
+                'train_accuracies': train_accs,
+                'val_accuracies': val_accs,
+                'test_accuracy': test_accuracy,
+                'fit_status': fit_status
+            }
+
+            print(f"Test Accuracy: {test_accuracy:.4f}, Status: {fit_status}")
+
+    # Add Gradient Boosting baseline
+    print("\nTraining Gradient Boosting...")
+    gb = GradientBoostingClassifier(n_estimators=200, learning_rate=0.1, max_depth=3, random_state=42)
+    gb.fit(X_train, y_train.ravel())
+    test_accuracy = gb.score(X_test, y_test)
+
+    results["Gradient Boosting"] = {
+        'train_losses': [],
+        'val_losses': [],
+        'train_accuracies': [],
+        'val_accuracies': [],
+        'test_accuracy': test_accuracy,
+        'fit_status': "Classical ML"
+    }
+    print(f"Gradient Boosting Test Accuracy: {test_accuracy:.4f}")
+
+    return results
